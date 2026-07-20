@@ -1,15 +1,18 @@
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
 FROM node:20-alpine
-WORKDIR /app
-ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY --from=builder /app/dist ./dist
+RUN apk add --no-cache openssl
+WORKDIR /backend
+
+# Recreate host directory structure so ../../../shared resolves from services/auth-service/src/
+COPY shared/ ./shared/
+COPY prisma/ ./prisma/
+
+# Install at /backend root so both shared/ and service src/ can resolve node_modules
+COPY services/auth-service/package*.json ./
+RUN npm install
+
+COPY services/auth-service/src/ ./services/auth-service/src/
+COPY services/auth-service/tsconfig.json ./services/auth-service/
+
 EXPOSE 3001
-CMD ["node","dist/index.js"]
+WORKDIR /backend/services/auth-service
+CMD ["/backend/node_modules/.bin/ts-node", "--transpile-only", "src/index.ts"]

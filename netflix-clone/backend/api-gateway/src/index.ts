@@ -25,7 +25,6 @@ app.use((req, res, next) => {
 });
 
 app.use(morgan("combined"));
-app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "api-gateway", ts: new Date().toISOString() });

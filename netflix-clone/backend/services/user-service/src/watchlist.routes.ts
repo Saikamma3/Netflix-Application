@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
-import { cache } from "../../shared/cache/cache.service";
+import { cache } from "../../../shared/cache/cache.service";
 
 export const watchlistRouter = Router();
 const prisma = new PrismaClient();

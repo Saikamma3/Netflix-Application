@@ -1,8 +1,8 @@
 import "dotenv/config";
 import express from "express";
 import { authRouter } from "./auth.routes";
-import { requestLogger } from "../../shared/middleware/logger.middleware";
-import { errorHandler, notFound } from "../../shared/middleware/error.middleware";
+import { requestLogger } from "../../../shared/middleware/logger.middleware";
+import { errorHandler, notFound } from "../../../shared/middleware/error.middleware";
 
 const app = express();
 const PORT = process.env.PORT || 3001;

@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { cache } from "../../shared/cache/cache.service";
-import { ContentDto, EpisodeDto, GenreDto } from "../../shared/types";
+import { cache } from "../../../shared/cache/cache.service";
+import { ContentDto, EpisodeDto, GenreDto } from "../../../shared/types";
 
 const prisma = new PrismaClient();
 

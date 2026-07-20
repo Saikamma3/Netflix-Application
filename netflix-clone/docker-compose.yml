@@ -60,7 +60,9 @@ services:
 
   # ── Backend Services ──────────────────────────────────────────────
   auth-service:
-    build: ./backend/services/auth-service
+    build:
+      context: ./backend
+      dockerfile: services/auth-service/Dockerfile
     container_name: netflix_auth
     restart: unless-stopped
     env_file: .env
@@ -72,7 +74,9 @@ services:
     networks: [netflix_net]
 
   content-service:
-    build: ./backend/services/content-service
+    build:
+      context: ./backend
+      dockerfile: services/content-service/Dockerfile
     container_name: netflix_content
     restart: unless-stopped
     env_file: .env
@@ -84,7 +88,9 @@ services:
     networks: [netflix_net]
 
   user-service:
-    build: ./backend/services/user-service
+    build:
+      context: ./backend
+      dockerfile: services/user-service/Dockerfile
     container_name: netflix_users
     restart: unless-stopped
     env_file: .env
@@ -96,7 +102,9 @@ services:
     networks: [netflix_net]
 
   streaming-service:
-    build: ./backend/services/streaming-service
+    build:
+      context: ./backend
+      dockerfile: services/streaming-service/Dockerfile
     container_name: netflix_streaming
     restart: unless-stopped
     env_file: .env
@@ -108,7 +116,9 @@ services:
     networks: [netflix_net]
 
   api-gateway:
-    build: ./backend/api-gateway
+    build:
+      context: ./backend
+      dockerfile: api-gateway/Dockerfile
     container_name: netflix_gateway
     restart: unless-stopped
     env_file: .env

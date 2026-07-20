@@ -3,8 +3,8 @@ import express from "express";
 import { profileRouter }   from "./profile.routes";
 import { watchlistRouter } from "./watchlist.routes";
 import { progressRouter }  from "./progress.routes";
-import { requestLogger }   from "../../shared/middleware/logger.middleware";
-import { errorHandler, notFound } from "../../shared/middleware/error.middleware";
+import { requestLogger }   from "../../../shared/middleware/logger.middleware";
+import { errorHandler, notFound } from "../../../shared/middleware/error.middleware";
 
 const app = express();
 const PORT = process.env.PORT || 3003;

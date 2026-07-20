@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { JwtPayload } from "../../shared/types";
+import { JwtPayload } from "../../../shared/types";
 
 export function authGuard(req: Request, res: Response, next: NextFunction): void {
   const header = req.headers["authorization"];

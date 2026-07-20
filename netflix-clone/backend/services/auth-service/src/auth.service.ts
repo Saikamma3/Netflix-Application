@@ -2,8 +2,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import { PrismaClient } from "@prisma/client";
-import { getRedis } from "../../shared/cache/redis.client";
-import { TokenPair, JwtPayload } from "../../shared/types";
+import { getRedis } from "../../../shared/cache/redis.client";
+import { TokenPair, JwtPayload } from "../../../shared/types";
 
 const prisma = new PrismaClient();
 const ACCESS_SECRET  = () => process.env.JWT_ACCESS_SECRET!;
