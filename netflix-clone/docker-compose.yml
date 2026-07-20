@@ -1,0 +1,153 @@
+version: "3.9"
+
+services:
+  # ── Infrastructure ────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: netflix_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-netflix}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-netflixpass}
+      POSTGRES_DB: ${POSTGRES_DB:-netflix_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-netflix}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [netflix_net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: netflix_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redispass} --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispass}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [netflix_net]
+
+  minio:
+    image: minio/minio:latest
+    container_name: netflix_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # MinIO Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [netflix_net]
+
+  # ── Backend Services ──────────────────────────────────────────────
+  auth-service:
+    build: ./backend/services/auth-service
+    container_name: netflix_auth
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3001
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    networks: [netflix_net]
+
+  content-service:
+    build: ./backend/services/content-service
+    container_name: netflix_content
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3002
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    networks: [netflix_net]
+
+  user-service:
+    build: ./backend/services/user-service
+    container_name: netflix_users
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3003
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    networks: [netflix_net]
+
+  streaming-service:
+    build: ./backend/services/streaming-service
+    container_name: netflix_streaming
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3004
+    depends_on:
+      minio: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [netflix_net]
+
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: netflix_gateway
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - content-service
+      - user-service
+      - streaming-service
+    networks: [netflix_net]
+
+  # ── Frontend ──────────────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: netflix_frontend
+    restart: unless-stopped
+    depends_on: [api-gateway]
+    networks: [netflix_net]
+
+  # ── Edge ─────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: netflix_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on: [api-gateway, frontend]
+    networks: [netflix_net]
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  netflix_net:
+    driver: bridge

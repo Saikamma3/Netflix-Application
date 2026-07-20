@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ContentType {
+  MOVIE
+  SHOW
+}
+
+enum SubscriptionTier {
+  BASIC
+  STANDARD
+  PREMIUM
+}
+
+enum RatingValue {
+  THUMBS_UP
+  THUMBS_DOWN
+}
+
+// ── Account (one per household) ──────────────────────────────────────
+model User {
+  id               String           @id @default(uuid())
+  email            String           @unique
+  passwordHash     String
+  subscriptionTier SubscriptionTier @default(BASIC)
+  isActive         Boolean          @default(true)
+  profiles         Profile[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@map("users")
+}
+
+// ── Profile (up to 5 per account) ────────────────────────────────────
+model Profile {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  avatarUrl      String          @default("/avatars/default.png")
+  isKidsProfile  Boolean         @default(false)
+  watchlist      Watchlist[]
+  watchProgress  WatchProgress[]
+  ratings        Rating[]
+  createdAt      DateTime        @default(now())
+
+  @@index([userId])
+  @@map("profiles")
+}
+
+// ── Genre ─────────────────────────────────────────────────────────────
+model Genre {
+  id       String         @id @default(uuid())
+  name     String         @unique
+  slug     String         @unique
+  content  ContentGenre[]
+
+  @@map("genres")
+}
+
+// ── Content (movies + shows) ──────────────────────────────────────────
+model Content {
+  id           String         @id @default(uuid())
+  title        String
+  description  String
+  type         ContentType
+  releaseYear  Int
+  maturityRating String       @default("PG-13")
+  duration     Int?           // minutes (null for shows)
+  posterUrl    String
+  backdropUrl  String
+  trailerKey   String?        // MinIO object key for trailer HLS
+  videoKey     String?        // MinIO object key for movie HLS (null for shows)
+  isFeatured   Boolean        @default(false)
+  genres       ContentGenre[]
+  episodes     Episode[]
+  watchlist    Watchlist[]
+  watchProgress WatchProgress[]
+  ratings      Rating[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([type])
+  @@index([isFeatured])
+  @@map("content")
+}
+
+// ── ContentGenre (many-to-many) ───────────────────────────────────────
+model ContentGenre {
+  contentId String
+  genreId   String
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  genre     Genre   @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([contentId, genreId])
+  @@map("content_genres")
+}
+
+// ── Episode (TV shows only) ───────────────────────────────────────────
+model Episode {
+  id          String  @id @default(uuid())
+  contentId   String
+  content     Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  season      Int
+  episodeNumber Int
+  title       String
+  description String
+  duration    Int     // minutes
+  videoKey    String  // MinIO object key for HLS manifest
+  thumbnailUrl String?
+  watchProgress WatchProgress[]
+
+  @@unique([contentId, season, episodeNumber])
+  @@index([contentId])
+  @@map("episodes")
+}
+
+// ── Watchlist ─────────────────────────────────────────────────────────
+model Watchlist {
+  profileId String
+  contentId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  addedAt   DateTime @default(now())
+
+  @@id([profileId, contentId])
+  @@map("watchlist")
+}
+
+// ── Watch Progress (powers "Continue Watching") ───────────────────────
+model WatchProgress {
+  id          String   @id @default(uuid())
+  profileId   String
+  contentId   String
+  episodeId   String?
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  content     Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  episode     Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  secondsWatched Int   @default(0)
+  completed   Boolean  @default(false)
+  watchedAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([profileId, contentId, episodeId])
+  @@index([profileId])
+  @@map("watch_progress")
+}
+
+// ── Rating ────────────────────────────────────────────────────────────
+model Rating {
+  profileId String
+  contentId String
+  value     RatingValue
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  ratedAt   DateTime @default(now())
+
+  @@id([profileId, contentId])
+  @@map("ratings")
+}
