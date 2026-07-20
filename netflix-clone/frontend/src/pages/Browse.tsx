@@ -8,14 +8,14 @@ import { userApi } from "../api/user.api";
 import { Content, Genre, WatchProgress } from "../types";
 
 export function Browse() {
-  const [params] = useSearchParams();
-  const genreFilter = params.get("genre");
+  const [params]     = useSearchParams();
+  const genreFilter  = params.get("genre");
 
-  const [featured,  setFeatured]  = useState<Content[]>([]);
-  const [genres,    setGenres]    = useState<Genre[]>([]);
-  const [byGenre,   setByGenre]   = useState<Record<string, Content[]>>({});
-  const [continueW, setContinueW] = useState<WatchProgress[]>([]);
-  const [loading,   setLoading]   = useState(true);
+  const [featured,   setFeatured]   = useState<Content[]>([]);
+  const [genres,     setGenres]     = useState<Genre[]>([]);
+  const [byGenre,    setByGenre]    = useState<Record<string, Content[]>>({});
+  const [continueW,  setContinueW]  = useState<WatchProgress[]>([]);
+  const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
     const init = async () => {
@@ -29,16 +29,20 @@ export function Browse() {
         setGenres(genresRes.data.data);
         setContinueW(continueRes.data.data);
 
-        // Load first 5 genres (or filtered genre)
         const targetGenres = genreFilter
-          ? genresRes.data.data.filter(g => g.slug === genreFilter)
+          ? genresRes.data.data.filter((g: Genre) => g.slug === genreFilter)
           : genresRes.data.data.slice(0, 6);
 
         const rows = await Promise.all(
-          targetGenres.map(g => contentApi.getByGenre(g.slug).then(r => ({ slug: g.slug, items: r.data.data })))
+          targetGenres.map((g: Genre) =>
+            contentApi.getByGenre(g.slug).then((r: { data: { data: Content[] } }) => ({
+              slug: g.slug,
+              items: r.data.data,
+            }))
+          )
         );
         const map: Record<string, Content[]> = {};
-        rows.forEach(r => { map[r.slug] = r.items; });
+        rows.forEach((r: { slug: string; items: Content[] }) => { map[r.slug] = r.items; });
         setByGenre(map);
       } finally {
         setLoading(false);
@@ -55,30 +59,50 @@ export function Browse() {
 
   const heroContent = featured[0];
 
+  // Build progress map: contentId → percent watched (0-100)
+  const progressMap: Record<string, number> = {};
+  continueW.forEach((w) => {
+    if (w.content?.duration && w.content.duration > 0) {
+      progressMap[w.contentId] = Math.min(
+        (w.secondsWatched / (w.content.duration * 60)) * 100,
+        100
+      );
+    }
+  });
+
+  const continueItems = continueW.filter((w) => w.content).map((w) => w.content!);
+
   return (
     <div className="min-h-screen bg-[#141414]">
       <Navbar />
 
       {heroContent && <HeroBanner content={heroContent} />}
 
-      <div className="-mt-16 relative z-10 pb-16">
+      {/* Rows sit below the hero with slight overlap for that Netflix look */}
+      <div className="-mt-16 relative z-10 pb-20">
         {/* Continue Watching */}
-        {continueW.length > 0 && (
+        {continueItems.length > 0 && (
           <ContentRow
-            title="Continue Watching"
-            items={continueW.filter(w => w.content).map(w => w.content!)}
+            title={`Continue Watching`}
+            items={continueItems}
+            progressMap={progressMap}
           />
         )}
 
-        {/* Featured row */}
+        {/* Featured row (excludes hero item) */}
         {featured.length > 1 && (
-          <ContentRow title="Featured on Netflix" items={featured.slice(1)} />
+          <ContentRow
+            title="Featured on Netflix"
+            items={featured.slice(1)}
+          />
         )}
 
         {/* Genre rows */}
-        {genres.map(g => byGenre[g.slug]?.length > 0 && (
-          <ContentRow key={g.id} title={g.name} items={byGenre[g.slug] || []} />
-        ))}
+        {genres.map((g) =>
+          byGenre[g.slug]?.length > 0 ? (
+            <ContentRow key={g.id} title={g.name} items={byGenre[g.slug]} />
+          ) : null
+        )}
       </div>
     </div>
   );
