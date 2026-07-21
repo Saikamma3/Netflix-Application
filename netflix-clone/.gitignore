@@ -1,4 +1,31 @@
+# ── Secrets (NEVER commit these) ─────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+
+# ── Node ──────────────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
 *.log
 *.bak
+npm-debug.log*
+
+# ── Prisma generated ──────────────────────────────────────────────────
+backend/**/generated/
+
+# ── Docker volumes (if accidentally mounted locally) ──────────────────
+postgres_data/
+redis_data/
+minio_data/
+
+# ── OS / Editor ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
 override.json
 demo/*
+
+# ── HLS upload workspace ──────────────────────────────────────────────
+hls-output/

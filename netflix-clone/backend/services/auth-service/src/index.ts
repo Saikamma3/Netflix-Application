@@ -7,7 +7,7 @@ import { errorHandler, notFound } from "../../../shared/middleware/error.middlew
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(express.json());
+app.use(express.json({ limit: "16kb" }));
 app.use(requestLogger);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "auth-service" }));

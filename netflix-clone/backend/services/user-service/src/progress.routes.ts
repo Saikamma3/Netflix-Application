@@ -4,7 +4,6 @@ import { PrismaClient } from "@prisma/client";
 export const progressRouter = Router();
 const prisma = new PrismaClient();
 
-// GET /progress — continue watching list
 progressRouter.get("/", async (req, res, next) => {
   try {
     const profileId = req.headers["x-profile-id"] as string;
@@ -20,7 +19,6 @@ progressRouter.get("/", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// GET /progress/:contentId — progress for a specific title
 progressRouter.get("/:contentId", async (req, res, next) => {
   try {
     const profileId = req.headers["x-profile-id"] as string;
@@ -34,20 +32,25 @@ progressRouter.get("/:contentId", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// POST /progress  { contentId, episodeId?, secondsWatched, completed? }
 progressRouter.post("/", async (req, res, next) => {
   try {
     const profileId = req.headers["x-profile-id"] as string;
     const { contentId, episodeId = null, secondsWatched, completed = false } = req.body;
+
     if (!profileId || !contentId || secondsWatched === undefined) {
-      res.status(400).json({ success: false, error: "contentId and secondsWatched required" });
-      return;
+      res.status(400).json({ success: false, error: "contentId and secondsWatched required" }); return;
+    }
+
+    // Validate secondsWatched — must be a non-negative number, max 24 hours
+    const secs = Number(secondsWatched);
+    if (!Number.isFinite(secs) || secs < 0 || secs > 86400) {
+      res.status(400).json({ success: false, error: "secondsWatched must be between 0 and 86400" }); return;
     }
 
     const row = await prisma.watchProgress.upsert({
       where: { profileId_contentId_episodeId: { profileId, contentId, episodeId: episodeId ?? "" } },
-      update: { secondsWatched, completed },
-      create: { profileId, contentId, episodeId, secondsWatched, completed },
+      update: { secondsWatched: Math.floor(secs), completed: !!completed },
+      create: { profileId, contentId, episodeId, secondsWatched: Math.floor(secs), completed: !!completed },
     });
     res.json({ success: true, data: row });
   } catch (e) { next(e); }

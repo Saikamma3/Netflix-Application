@@ -5,7 +5,6 @@ import { cache } from "../../../shared/cache/cache.service";
 export const profileRouter = Router();
 const prisma = new PrismaClient();
 
-// GET /profiles — list all profiles for the logged-in user
 profileRouter.get("/", async (req, res, next) => {
   try {
     const userId = req.headers["x-user-id"] as string;
@@ -15,20 +14,43 @@ profileRouter.get("/", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// POST /profiles — create a new profile (max 5)
 profileRouter.post("/", async (req, res, next) => {
   try {
     const userId = req.headers["x-user-id"] as string;
+
+    const { name, avatarUrl, isKidsProfile } = req.body;
+
+    // Validate name
+    if (!name || typeof name !== "string") {
+      res.status(400).json({ success: false, error: "Profile name is required" }); return;
+    }
+    const trimmedName = name.trim();
+    if (trimmedName.length < 1 || trimmedName.length > 50) {
+      res.status(400).json({ success: false, error: "Profile name must be 1-50 characters" }); return;
+    }
+
+    // Validate avatarUrl if provided
+    if (avatarUrl !== undefined) {
+      if (typeof avatarUrl !== "string" || avatarUrl.length > 500) {
+        res.status(400).json({ success: false, error: "Invalid avatarUrl" }); return;
+      }
+      // Only allow relative paths or https URLs
+      if (avatarUrl && !avatarUrl.startsWith("/") && !avatarUrl.startsWith("https://")) {
+        res.status(400).json({ success: false, error: "avatarUrl must be a relative path or https URL" }); return;
+      }
+    }
+
     const count = await prisma.profile.count({ where: { userId } });
     if (count >= 5) { res.status(400).json({ success: false, error: "Maximum 5 profiles allowed" }); return; }
-    const { name, avatarUrl, isKidsProfile } = req.body;
-    const profile = await prisma.profile.create({ data: { userId, name, avatarUrl, isKidsProfile: !!isKidsProfile } });
+
+    const profile = await prisma.profile.create({
+      data: { userId, name: trimmedName, avatarUrl, isKidsProfile: !!isKidsProfile },
+    });
     await cache.del(`profiles:${userId}`);
     res.status(201).json({ success: true, data: profile });
   } catch (e) { next(e); }
 });
 
-// DELETE /profiles/:id
 profileRouter.delete("/:id", async (req, res, next) => {
   try {
     const userId = req.headers["x-user-id"] as string;
