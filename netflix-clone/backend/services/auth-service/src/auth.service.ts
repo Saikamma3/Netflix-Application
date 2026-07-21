@@ -34,7 +34,7 @@ export class AuthService {
 
   async refresh(token: string): Promise<TokenPair> {
     let payload: JwtPayload;
-    try { payload = jwt.verify(token, REFRESH_SECRET()) as JwtPayload; }
+    try { payload = jwt.verify(token, REFRESH_SECRET(), { algorithms: ["HS256"] }) as JwtPayload; }
     catch { throw err("Invalid refresh token", 401); }
 
     const stored = await getRedis().get(`refresh:${payload.sub}`);

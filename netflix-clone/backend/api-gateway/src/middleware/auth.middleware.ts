@@ -9,7 +9,7 @@ export function authGuard(req: Request, res: Response, next: NextFunction): void
     return;
   }
   try {
-    const payload = jwt.verify(header.slice(7), process.env.JWT_ACCESS_SECRET!) as JwtPayload;
+    const payload = jwt.verify(header.slice(7), process.env.JWT_ACCESS_SECRET!, { algorithms: ["HS256"] }) as JwtPayload;
     req.headers["x-user-id"]      = payload.sub;
     req.headers["x-user-email"]   = payload.email;
     req.headers["x-profile-id"]   = payload.profileId || "";

@@ -14,24 +14,27 @@ export function Browse() {
   const [featured,   setFeatured]   = useState<Content[]>([]);
   const [genres,     setGenres]     = useState<Genre[]>([]);
   const [byGenre,    setByGenre]    = useState<Record<string, Content[]>>({});
+  const [telugu,     setTelugu]     = useState<Content[]>([]);
   const [continueW,  setContinueW]  = useState<WatchProgress[]>([]);
   const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
     const init = async () => {
       try {
-        const [featuredRes, genresRes, continueRes] = await Promise.all([
+        const [featuredRes, genresRes, continueRes, teluguRes] = await Promise.all([
           contentApi.getFeatured(),
           contentApi.getGenres(),
           userApi.getContinueWatching(),
+          contentApi.getByGenre("telugu"),
         ]);
         setFeatured(featuredRes.data.data);
         setGenres(genresRes.data.data);
         setContinueW(continueRes.data.data);
+        setTelugu(teluguRes.data.data);
 
         const targetGenres = genreFilter
-          ? genresRes.data.data.filter((g: Genre) => g.slug === genreFilter)
-          : genresRes.data.data.slice(0, 6);
+          ? genresRes.data.data.filter((g: Genre) => g.slug === genreFilter && g.slug !== "telugu")
+          : genresRes.data.data.filter((g: Genre) => g.slug !== "telugu").slice(0, 6);
 
         const rows = await Promise.all(
           targetGenres.map((g: Genre) =>
@@ -95,6 +98,11 @@ export function Browse() {
             title="Featured on Netflix"
             items={featured.slice(1)}
           />
+        )}
+
+        {/* Telugu Movies — always shown, regardless of genre pagination */}
+        {telugu.length > 0 && (
+          <ContentRow title="Telugu Movies" items={telugu} />
         )}
 
         {/* Genre rows */}
